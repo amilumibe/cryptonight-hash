@@ -16,6 +16,7 @@ travis-ci = { repository = "bertptrs/cryptonight-hash", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
+byte-slice-cast = "1.2.2"
 digest = "0.8.1"
 sha3 = "0.8.2"
 tiny-keccak = "1.5.0"

@@ -1,10 +1,9 @@
 //! Portable Rust AES and hashing implementation for CryptoNight.
 use std::ops::BitXor;
 
-use slice_cast::cast_mut;
-
 use constants::*;
 
+use byte_slice_cast::{AsByteSlice};
 use crate::aes::u64p::U64p;
 use crate::ROUNDS;
 
@@ -40,8 +39,9 @@ fn init_scratchpad(keccac: &[u8], scratchpad: &mut [u8]) {
 }
 
 fn main_loop(mut a: U64p, mut b: U64p, scratchpad: &mut [u8]) {
+    
     // Cast to u128 for easier handling. Scratch pad is only used in 16 byte blocks
-    let scratchpad: &mut [U64p] = unsafe { cast_mut(scratchpad) };
+    let scratchpad: &mut [U64p] = &mut [U64p::from(scratchpad.as_byte_slice())];
 
     for _ in 0..ROUNDS {
         // First transfer
