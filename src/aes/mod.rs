@@ -3,9 +3,9 @@ use std::ops::BitXor;
 
 use constants::*;
 
-use byte_slice_cast::{AsByteSlice};
 use crate::aes::u64p::U64p;
 use crate::ROUNDS;
+use byte_slice_cast::AsByteSlice;
 
 mod constants;
 mod u64p;
@@ -39,7 +39,6 @@ fn init_scratchpad(keccac: &[u8], scratchpad: &mut [u8]) {
 }
 
 fn main_loop(mut a: U64p, mut b: U64p, scratchpad: &mut [u8]) {
-    
     // Cast to u128 for easier handling. Scratch pad is only used in 16 byte blocks
     let scratchpad: &mut [U64p] = &mut [U64p::from(scratchpad.as_byte_slice())];
 
@@ -219,18 +218,12 @@ mod tests {
     #[test]
     fn test_shift_rows() {
         let mut input = [
-            0x0, 0x1, 0x2, 0x3,
-            0x4, 0x5, 0x6, 0x7,
-            0x8, 0x9, 0xA, 0xB,
-            0xC, 0xD, 0xE, 0xF,
+            0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,
         ];
 
         shift_rows(&mut input);
         let expected_outcome: [u8; 16] = [
-            0x0, 0x5, 0xA, 0xF,
-            0x4, 0x9, 0xE, 0x3,
-            0x8, 0xD, 0x2, 0x7,
-            0xC, 0x1, 0x6, 0xB,
+            0x0, 0x5, 0xA, 0xF, 0x4, 0x9, 0xE, 0x3, 0x8, 0xD, 0x2, 0x7, 0xC, 0x1, 0x6, 0xB,
         ];
         assert_eq!(input, expected_outcome);
     }
@@ -245,7 +238,8 @@ mod tests {
     #[test]
     fn test_derive_key() {
         let primary = hex!("00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f");
-        let expected = hex!("00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
+        let expected = hex!(
+            "00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
                              10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f
                              a5 73 c2 9f a1 76 c4 98 a9 7f ce 93 a5 72 c0 9c
                              16 51 a8 cd 02 44 be da 1a 5d a4 c1 06 40 ba de
@@ -254,7 +248,8 @@ mod tests {
                              c6 56 82 7f c9 a7 99 17 6f 29 4c ec 6c d5 59 8b
                              3d e2 3a 75 52 47 75 e7 27 bf 9e b4 54 07 cf 39
                              0b dc 90 5f c2 7b 09 48 ad 52 45 a4 c1 87 1c 2f
-                             45 f5 a6 60 17 b2 d3 87 30 0d 4d 33 64 0a 82 0a");
+                             45 f5 a6 60 17 b2 d3 87 30 0d 4d 33 64 0a 82 0a"
+        );
         let result = derive_key(&primary);
         assert_eq!(result.as_ref(), expected.as_ref());
     }

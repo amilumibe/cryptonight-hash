@@ -29,11 +29,14 @@
 use std::alloc::{alloc, Layout};
 
 use blake_hash::Blake256;
-pub use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
-use digest::generic_array::GenericArray;
+use digest::generic_array::arr;
 use digest::generic_array::typenum::{U200, U32};
+use digest::generic_array::GenericArray;
+pub use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
 use groestl::Groestl256;
 use jh_x86_64::Jh256;
+use skein_hash::{Digest as SkeinDigest, Skein512};
+use std::convert::TryInto;
 
 mod aes;
 #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), feature = "aesni"))]
@@ -50,7 +53,6 @@ struct A16<T>(pub T);
 pub struct CryptoNight {
     internal_hasher: sha3::Keccak256Full,
 }
-
 
 impl CryptoNight {
     /// Alignment requirement for the scratch pad.
@@ -72,7 +74,10 @@ impl CryptoNight {
     /// # Panics
     ///
     /// If the buffer provided is not acceptable, this method will panic.
-    pub fn fixed_result_with_buffer(self, scratchpad: &mut [u8]) -> GenericArray<u8, <Self as FixedOutput>::OutputSize> {
+    pub fn fixed_result_with_buffer(
+        self,
+        scratchpad: &mut [u8],
+    ) -> GenericArray<u8, <Self as FixedOutput>::OutputSize> {
         // Ensure that our alignment requirements are met.
         assert_eq!(scratchpad.as_ptr() as usize & (Self::SP_ALIGNMENT - 1), 0);
         assert_eq!(scratchpad.len(), Self::SP_SIZE);
@@ -83,7 +88,9 @@ impl CryptoNight {
         Self::digest_main(keccac, scratchpad);
 
         #[allow(clippy::cast_ptr_alignment)]
-            tiny_keccak::keccakf(unsafe { &mut *(keccac as *mut GenericArray<u8, U200> as *mut [u64; 25]) });
+        tiny_keccak::keccakf(unsafe {
+            &mut *(keccac as *mut GenericArray<u8, U200> as *mut [u64; 25])
+        });
 
         Self::hash_final_state(&keccac)
     }
@@ -102,8 +109,13 @@ impl CryptoNight {
     /// # Panics
     ///
     /// If the buffer provided is not acceptable, this method will panic.
-    pub fn digest_with_buffer<B>(data: B, scratchpad: &mut [u8]) -> GenericArray<u8, <Self as FixedOutput>::OutputSize>
-        where B: AsRef<[u8]> {
+    pub fn digest_with_buffer<B>(
+        data: B,
+        scratchpad: &mut [u8],
+    ) -> GenericArray<u8, <Self as FixedOutput>::OutputSize>
+    where
+        B: AsRef<[u8]>,
+    {
         let mut hasher: Self = Default::default();
         Input::input(&mut hasher, data);
         hasher.fixed_result_with_buffer(scratchpad)
@@ -122,18 +134,21 @@ impl CryptoNight {
     /// ```
     pub fn allocate_scratchpad() -> impl AsMut<[u8]> {
         unsafe {
-            let buffer = alloc(Layout::from_size_align_unchecked(Self::SP_SIZE, Self::SP_ALIGNMENT));
+            let buffer = alloc(Layout::from_size_align_unchecked(
+                Self::SP_SIZE,
+                Self::SP_ALIGNMENT,
+            ));
             Vec::from_raw_parts(buffer, Self::SP_SIZE, Self::SP_SIZE)
         }
     }
 
     fn digest_main(keccac: &mut [u8], scratchpad: &mut [u8]) {
         #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), feature = "aesni"))]
-            {
-                if is_x86_feature_detected!("aes") && is_x86_feature_detected!("sse4.1") {
-                    return unsafe { aesni::digest_main(keccac, scratchpad) };
-                }
+        {
+            if is_x86_feature_detected!("aes") && is_x86_feature_detected!("sse4.1") {
+                return unsafe { aesni::digest_main(keccac, scratchpad) };
             }
+        }
         aes::digest_main(keccac, scratchpad);
     }
 
@@ -142,7 +157,14 @@ impl CryptoNight {
             0 => Blake256::digest(&state),
             1 => Groestl256::digest(&state),
             2 => Jh256::digest(&state),
-            x => unreachable!("Invalid output option {}", x)
+            3 => {
+                let res: skein_hash::GenericArray<u8, <Self as FixedOutput>::OutputSize> =
+                    Skein512::digest(&state);
+                GenericArray::<u8, <Self as FixedOutput>::OutputSize>::clone_from_slice(
+                    &res.as_slice(),
+                )
+            }
+            x => unreachable!("Invalid output option {}", x),
         }
     }
 }

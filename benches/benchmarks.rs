@@ -1,5 +1,5 @@
-use criterion::{Bencher, black_box, Criterion, criterion_group, criterion_main};
 use criterion::measurement::WallTime;
+use criterion::{black_box, criterion_group, criterion_main, Bencher, Criterion};
 use digest::Digest;
 
 use cryptonight_hash::CryptoNight;

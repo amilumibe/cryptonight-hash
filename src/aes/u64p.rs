@@ -1,6 +1,6 @@
 use std::intrinsics::{copy_nonoverlapping, transmute};
-use std::mem::{MaybeUninit, size_of};
-use std::ops::{Add, Mul, BitXor};
+use std::mem::{size_of, MaybeUninit};
+use std::ops::{Add, BitXor, Mul};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// A pair of 64 bit unsigned integers
@@ -15,7 +15,11 @@ impl From<&[u8]> for U64p {
         debug_assert!(bytes.len() == size_of::<U64p>());
         let mut tmp: MaybeUninit<Self> = MaybeUninit::uninit();
         unsafe {
-            copy_nonoverlapping(bytes.as_ptr(), tmp.as_mut_ptr() as *mut u8, size_of::<U64p>());
+            copy_nonoverlapping(
+                bytes.as_ptr(),
+                tmp.as_mut_ptr() as *mut u8,
+                size_of::<U64p>(),
+            );
             tmp.assume_init()
         }
     }
@@ -33,7 +37,7 @@ impl AsRef<[u8]> for U64p {
 impl AsMut<[u8]> for U64p {
     fn as_mut(&mut self) -> &mut [u8] {
         unsafe {
-            let data: &mut[u8; 16] = &mut *(self as *mut Self as *mut [u8; 16]);
+            let data: &mut [u8; 16] = &mut *(self as *mut Self as *mut [u8; 16]);
             data.as_mut()
         }
     }
@@ -48,9 +52,7 @@ impl From<U64p> for usize {
 
 impl From<U64p> for [u8; 16] {
     fn from(data: U64p) -> Self {
-        unsafe {
-            transmute(data)
-        }
+        unsafe { transmute(data) }
     }
 }
 
@@ -82,6 +84,6 @@ impl BitXor for U64p {
     type Output = U64p;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
-        U64p (self.0 ^ rhs.0, self.1 ^ rhs.1)
+        U64p(self.0 ^ rhs.0, self.1 ^ rhs.1)
     }
 }
